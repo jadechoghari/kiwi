@@ -30,3 +30,15 @@ class SmashConfig(dict):
         self['cache_implementation'] = 'static'  # Default cache implementation
         self['device'] = 'cuda'
         # Add other default parameters as needed
+        self['compilers'] = []  # Options like 'torch.compile', 'prune_hf', etc.
+        self['quant_type'] = None  # Quantization options
+        self['pruning'] = False  # Enable pruning (LLM-Pruner or others)
+        self['pruning_ratio'] = 0.5  # Default pruning ratio for LLM-Pruner
+        self['pruner_type'] = 'l2'  # Pruning method (default: l2)
+        self['model_type'] = 'llama'  # Type of LLM model ('llama', 'bloom', 'vicuna', etc.)
+        self['device'] = 'cuda'  # Default device
+        self['eval_device'] = 'cuda'  # Evaluation device for LLM-Pruner
+        self['block_wise'] = False  # Block-wise pruning flag for LLM-Pruner
+        self['channel_wise'] = False  # Channel-wise pruning flag for LLM-Pruner
+        self['layer_wise'] = False  # Layer-wise pruning flag for LLM-Pruner
+        self['save_model'] = True  # Save the optimized model

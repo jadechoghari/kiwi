@@ -16,6 +16,7 @@ from transformers import (
 import timm
 import kiwi_engine.pruner.prune_llama as prune_llama
 import kiwi_engine.pruner.prune_timm as prune_timm  
+import subprocess
 
 
 logger = logging.getLogger(__name__)
@@ -322,6 +323,43 @@ class Optimizer:
         logger.info(f"Pruned TIMM model {model_name} with ratio {pruning_ratio}")
         if save_model_path:
             logger.info(f"Pruned model saved to {save_model_path}")
+
+
+    def _prune_llm_model(self):
+        """
+        Prune a large language model (LLM) using LLM-Pruner.
+        """
+        model_type = self.smash_config.get('model_type')
+
+        # Add support for various LLMs based on the selected model type
+        if model_type in ['llama', 'bloom', 'vicuna']:
+            self._prune_llm_pruner()
+        else:
+            raise ValueError(f"Unsupported LLM model type for pruning: {model_type}")
+
+    def _prune_llm_pruner(self):
+        """
+        Use LLM-Pruner to prune LLaMA, BLOOM, Vicuna, etc. models.
+        """
+        args = {
+            'base_model': self.model_id,
+            'pruning_ratio': self.smash_config.get('pruning_ratio', 0.5),
+            'pruner_type': self.smash_config.get('pruner_type', 'l2'),
+            'block_wise': self.smash_config.get('block_wise', False),
+            'channel_wise': self.smash_config.get('channel_wise', False),
+            'layer_wise': self.smash_config.get('layer_wise', False),
+            'device': self.smash_config.get('device', 'cuda'),
+            'eval_device': self.smash_config.get('eval_device', 'cuda'),
+            'save_model': self.smash_config.get('save_model', True),
+        }
+
+        # Convert args to command line format for subprocess
+        cmd_args = [f"--{key}={value}" for key, value in args.items()]
+
+        # Call hf_prune.py or another script for LLM pruning
+        subprocess.run(['python', 'hf_prune.py'] + cmd_args, check=True)
+
+        logger.info(f"LLM model pruned successfully: {self.model_id}")
 
 
 
