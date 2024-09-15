@@ -1,7 +1,3 @@
-Here’s the updated **Kiwi README** with a more fun, Gen-Z, and "Jade-style" approach, complete with the new **LLM-Pruner** and quantization support, and some energetic phrases to spice things up:
-
----
-
 # Kiwi: Smash Those Models, Go Kiwiiii 🥝💨
 
 **Kiwi** is your ultimate sidekick for optimizing large language models (LLMs) without breaking a sweat. It smashes through inference costs, speeds up performance, and trims those bloated LLMs like a pro barber giving your models a fresh cut. Whether you're tired of paying AWS bills or you just want your model to go brrrr, **Kiwi** is here to save the day!
