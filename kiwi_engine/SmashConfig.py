@@ -19,9 +19,14 @@ class SmashConfig(dict):
         self['task'] = None
         self['compilers'] = []
         self['quantization_bits'] = 8  # Default quantization bits
-        self['device'] = 'cpu'  # Default device
         self['device_map'] = 'auto'
         self['torch_dtype'] = torch.float16
         self['diffusers_pipeline'] = None
         self['diffusers_model_id'] = None 
+        self['quant_type'] = None,  # Default quantization type
+        self['group_size'] = 128  # Default group size for quantization
+        self['torch_dtype'] = torch.bfloat16  # Default precision
+        self['max_length'] = 128  # Default max length for generation
+        self['cache_implementation'] = 'static'  # Default cache implementation
+        self['device'] = 'cuda'
         # Add other default parameters as needed

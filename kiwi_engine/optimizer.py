@@ -11,6 +11,7 @@ from transformers import (
     GPTQConfig,
     AwqConfig,
     AutoConfig,
+    AutoModelForCausalLM, AutoTokenizer, TorchAoConfig
 )
 import timm
 import kiwi_engine.pruner.prune_llama as prune_llama
@@ -44,6 +45,11 @@ class Optimizer:
 
       # Check if pruning is requested
       # Check if pruning is requested
+      quant_type = self.smash_config.get('quant_type', None)
+      if quant_type:
+            logger.info(f"Quantization requested with type: {quant_type}. Starting quantization process.")
+            self._quantize_model()
+            return
       pruning_ratio = self.smash_config.get('pruning_ratio', 0.0)
       timm_model_list = prune_timm.list_timm_models()
       if self.model_id in timm_model_list:
@@ -334,6 +340,58 @@ class Optimizer:
         output = self.model.generate(input_ids, max_length=50)
         generated_text = self.tokenizer.decode(output[0], skip_special_tokens=True)
         logger.info(f"Generated text: {generated_text}")
+
+
+    def _quantize_model(self):
+        """
+        Quantize the model using TorchAoConfig and optionally compile it for further optimization.
+        """
+        model_id = self.model_id or self.smash_config.get('model_id')
+        quant_type = self.smash_config.get('quant_type', 'int4_weight_only')
+        group_size = self.smash_config.get('group_size', 128)
+        torch_dtype = self.smash_config.get('torch_dtype', torch.bfloat16)
+        device = self.smash_config.get('device', 'cuda')
+        
+        # Set up the quantization configuration
+        quantization_config = TorchAoConfig(
+            quant_type=quant_type,
+            group_size=group_size
+        )
+
+        logger.info(f"Loading quantized model: {model_id} with {quant_type} and group size {group_size}")
+
+        # Load the quantized model
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            torch_dtype=torch_dtype,
+            quantization_config=quantization_config,
+            device_map=device
+        )
+
+        # Load the tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+        logger.info(f"Model loaded and quantized. Applying further optimizations...")
+
+        # Apply compilation (optional)
+        compile_model = self.smash_config.get('compile', False)
+        if compile_model:
+            logger.info(f"Compiling model forward function with torch.compile...")
+            self.model.forward = torch.compile(
+                self.model.forward, 
+                mode="reduce-overhead", 
+                fullgraph=True
+            )
+
+        logger.info(f"Model optimized and ready for inference.")
+
+        # Optionally save the quantized model
+        save_model_path = self.smash_config.get('save_model', None)
+        if save_model_path:
+            self.model.save_pretrained(save_model_path)
+            self.tokenizer.save_pretrained(save_model_path)
+            logger.info(f"Quantized model saved to {save_model_path}")
+
 
     def get_tokenizer(self):
         """
