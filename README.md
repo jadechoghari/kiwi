@@ -24,7 +24,8 @@
 First things first, let’s get you set up:
 
 ```bash
-pip install kiwi-smash
+!git clone https://github.com/jadechoghari/kiwi.git
+!pip install -r requirements.txt
 ```
 
 ---
