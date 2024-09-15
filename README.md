@@ -1,8 +1,5 @@
 # Kiwi: Smash Those Models, Go Kiwiiii 🥝💨
 
-Source Code Generously Borrowed from Ma et al "LLM-Pruner: On the Structural Pruning of Large Language Models" (2023) https://arxiv.org/abs/2305.11627 [https://github.com/horseee/LLM-Pruner]. 🚀🚀🚀
-
-
 **Kiwi** is your ultimate sidekick for optimizing large language models (LLMs) without breaking a sweat. It smashes through inference costs, speeds up performance, and trims those bloated LLMs like a pro barber giving your models a fresh cut. Whether you're tired of paying AWS bills or you just want your model to go brrrr, **Kiwi** is here to save the day!
 
 ### Why Kiwi?
@@ -142,3 +139,10 @@ With Kiwi, the days of high AWS bills and slow LLMs are over. Whether you're pru
 Make sure you buid transformers from source to import TorchAoConfig!!
 
 And you’re off to the races! 🚀 Go Kiwiiii and watch your models fly.
+
+# Acknowledgement
+
+LLMPruner Code Generously Borrowed from Ma et al "LLM-Pruner: On the Structural Pruning of Large Language Models" (2023) https://arxiv.org/abs/2305.11627 [https://github.com/horseee/LLM-Pruner]. 🚀🚀🚀
+
+NOTE: We will acknowledge the code of **all** the authors we have **used**! SOTA compression/pruning techniques will not possible without them ❤️
+
