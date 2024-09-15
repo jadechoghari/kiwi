@@ -1,0 +1,7 @@
+accelerate
+bitsandbytes>0.37.0
+auto-gptq
+autoawq
+quanto
+diffusers
+torchao
