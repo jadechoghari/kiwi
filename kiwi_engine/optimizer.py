@@ -1,5 +1,6 @@
 # kiwi_engine/optimizer.py
 
+import argparse
 import torch
 import logging
 import sys
@@ -11,6 +12,10 @@ from transformers import (
     AwqConfig,
     AutoConfig,
 )
+import timm
+import kiwi_engine.pruner.prune_llama as prune_llama
+import kiwi_engine.pruner.prune_timm as prune_timm  
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -36,6 +41,19 @@ class Optimizer:
       Optimize the model by automatically selecting the best quantization method.
       """
       # Check if the task is related to Diffusers
+
+      # Check if pruning is requested
+      # Check if pruning is requested
+      pruning_ratio = self.smash_config.get('pruning_ratio', 0.0)
+      timm_model_list = prune_timm.list_timm_models()
+      if self.model_id in timm_model_list:
+            logger.info(f"Detected TIMM model: {self.model_id}. Starting TIMM model pruning.")
+            self._prune_timm_model()
+            return  # Exit after TIMM model pruning
+      if pruning_ratio > 0.0:
+            logger.info("Pruning requested. Starting pruning process.")
+            self._prune_model()
+            return  # Exit after pruning
       if self.smash_config.get('task') in [
           'text_image_generation',
           'image_image_generation',
@@ -252,6 +270,70 @@ class Optimizer:
         if self.model is None:
             raise ValueError("Model not optimized yet. Call optimize() first.")
         return self.model
+    
+
+    def _prune_model(self):
+        """
+        Prune the model using the external prune_llama.py script.
+        """
+        import sys
+        import kiwi_engine.pruner.prune_llama as prune_llama
+
+        # Prepare arguments for prune_llama
+        args = argparse.Namespace(
+            model=self.model_id or self.smash_config.get('model_id'),
+            seed=self.smash_config.get('seed', 0),
+            nsamples=self.smash_config.get('nsamples', 128),
+            pruning_ratio=self.smash_config.get('pruning_ratio', 0),
+            save=None,  # Optionally set a path to save results
+            save_model=self.smash_config.get('save_model'),
+            eval_zero_shot=self.smash_config.get('eval_zero_shot', False)
+        )
+
+        # Call the main function from prune_llama
+        prune_llama.main(args)
+
+        logger.info(f"Pruning completed for model {args.model}.")
+        
+        if args.save_model:
+            logger.info(f"Pruned model saved to {args.save_model}")
+
+    def _prune_timm_model(self):
+        """
+        Prune a TIMM model using prune_timm.py.
+        """
+        import prune_timm
+
+        # Extract parameters from SmashConfig
+        model_name = self.model_id
+        pruning_ratio = self.smash_config.get('pruning_ratio', 0.5)
+        global_pruning = self.smash_config.get('global_pruning', False)
+        save_model_path = self.smash_config.get('save_model', None)
+
+        # Perform pruning via prune_timm
+        prune_timm.prune_timm_model(model_name, pruning_ratio, global_pruning, save_model=save_model_path)
+
+        logger.info(f"Pruned TIMM model {model_name} with ratio {pruning_ratio}")
+        if save_model_path:
+            logger.info(f"Pruned model saved to {save_model_path}")
+
+
+
+    def _evaluate_zero_shot(self):
+        """
+        Evaluate the pruned model in a zero-shot setting.
+        """
+        logger.info("Evaluating the pruned model in zero-shot setting.")
+        # TODO: Implement evaluation logic here
+
+        # This is highly dependent on the specific task and dataset
+        # For demonstration, we'll perform a simple generation
+
+        input_text = "Once upon a time"
+        input_ids = self.tokenizer.encode(input_text, return_tensors='pt').to(self.smash_config.get('device', 'cpu'))
+        output = self.model.generate(input_ids, max_length=50)
+        generated_text = self.tokenizer.decode(output[0], skip_special_tokens=True)
+        logger.info(f"Generated text: {generated_text}")
 
     def get_tokenizer(self):
         """
