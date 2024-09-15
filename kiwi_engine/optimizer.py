@@ -14,8 +14,10 @@ from transformers import (
     AutoModelForCausalLM, AutoTokenizer, TorchAoConfig
 )
 import timm
-import kiwi_engine.pruner.prune_llama as prune_llama
-import kiwi_engine.pruner.prune_timm as prune_timm  
+from .pruner import prune_llama
+from .pruner import prune_timm
+from .pruner.hf_prune import main as prune_llm_main
+import argparse
 import subprocess
 
 
