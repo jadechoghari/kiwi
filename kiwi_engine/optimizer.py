@@ -54,7 +54,7 @@ class Optimizer:
             self._quantize_model()
             return
       pruning_ratio = self.smash_config.get('pruning_ratio', 0.0)
-      timm_model_list = prune_timm.list_timm_models()
+      timm_model_list = timm.list_models()
       if self.model_id in timm_model_list:
             logger.info(f"Detected TIMM model: {self.model_id}. Starting TIMM model pruning.")
             self._prune_timm_model()
@@ -101,6 +101,50 @@ class Optimizer:
               self._quantize_with_bitsandbytes()
           else:
               raise ValueError(f"Unsupported quantization method: {self.quant_method}")
+
+    def parse_args():
+      parser = argparse.ArgumentParser(description='Pruning LLaMA (huggingface version)')
+
+      # argument for parsing
+      parser.add_argument('--base_model', type=str, default="decapoda-research/llama-7b-hf", help='base model name')
+      parser.add_argument('--save_ckpt_log_name', type=str, default="llama_prune", help='the path for saving the checkpoint and the log.')
+      parser.add_argument('--pruning_ratio', type=float, default=0.5, help='pruning ratio')
+      parser.add_argument('--pruner_type', type=str, default='l2', help='pruner type')
+
+      # argument for generation
+      parser.add_argument('--temperature', type=float, default=1.0, help='temperature')
+      parser.add_argument('--top_p', type=float, default=0.95, help='top p')
+      parser.add_argument('--max_seq_len', type=int, default=128, help='max sequence length')
+
+      # argument for pruning
+      parser.add_argument('--channel_wise', action='store_true', help='channel wise')
+      parser.add_argument('--block_wise', action='store_true', help='block wise')
+      parser.add_argument('--layer_wise', action='store_true', help='layer wise')
+      parser.add_argument('--layer', type=int, default=12, help='remain the previous n layers')
+
+      parser.add_argument('--block_attention_layer_start', type=int, default=3, help='start layer of block attention layers')
+      parser.add_argument('--block_attention_layer_end', type=int, default=31, help='end layer of block attention layers')
+      parser.add_argument('--block_mlp_layer_start', type=int, default=3, help='start layer of block mlp layers')
+      parser.add_argument('--block_mlp_layer_end', type=int, default=31, help='end layer of block mlp layers')
+
+      parser.add_argument('--iterative_steps', type=int, default=1, help="Iteration step for pruning. Default=1")
+      parser.add_argument('--grouping_strategy', type=str, default='sum', help='Reduce method for grouping')
+      parser.add_argument('--global_pruning', action='store_true', help='whether global pruning')
+      parser.add_argument('--taylor', type=str, default='param_first', help='choose from [vectorize, param_second, param_first, param_mix]')
+      parser.add_argument('--num_examples', type=int, default=10)
+
+      # general argument
+      parser.add_argument('--device', type=str, default="cuda", help='device')
+      parser.add_argument('--test_before_train', action='store_true', help='whether test before training')
+      parser.add_argument('--eval_device', type=str, default="cuda", help='evaluation device')
+      parser.add_argument('--test_after_train', action='store_true', help='whether test after training')
+      parser.add_argument('--seed', type=int, default=42, help='random seed')
+      parser.add_argument('--save_model', action='store_true', help='whether to save model')
+
+      # Parse only known arguments
+      args, unknown = parser.parse_known_args()
+
+      return args
 
     def _get_supported_quant_methods(self):
         """
@@ -286,7 +330,7 @@ class Optimizer:
         Prune the model using the external prune_llama.py script.
         """
         import sys
-        import kiwi_engine.pruner.prune_llama as prune_llama
+        import pruner.prune_llama as prune_llama
 
         # Prepare arguments for prune_llama
         args = argparse.Namespace(
@@ -298,9 +342,12 @@ class Optimizer:
             save_model=self.smash_config.get('save_model'),
             eval_zero_shot=self.smash_config.get('eval_zero_shot', False)
         )
+        model=self.model_id or self.smash_config.get('model_id')
+        pruning_ratio=self.smash_config.get('pruning_ratio', 0)
+        seed=self.smash_config.get('seed', 0)
 
         # Call the main function from prune_llama
-        prune_llama.main(args)
+        prune_llama.main(args, model_name=model, pruning_ratio=pruning_ratio, seed=seed)
 
         logger.info(f"Pruning completed for model {args.model}.")
         
@@ -340,28 +387,42 @@ class Optimizer:
             raise ValueError(f"Unsupported LLM model type for pruning: {model_type}")
 
     def _prune_llm_pruner(self):
-        """
-        Use LLM-Pruner to prune LLaMA, BLOOM, Vicuna, etc. models.
-        """
-        args = {
-            'base_model': self.model_id,
-            'pruning_ratio': self.smash_config.get('pruning_ratio', 0.5),
-            'pruner_type': self.smash_config.get('pruner_type', 'l2'),
-            'block_wise': self.smash_config.get('block_wise', False),
-            'channel_wise': self.smash_config.get('channel_wise', False),
-            'layer_wise': self.smash_config.get('layer_wise', False),
-            'device': self.smash_config.get('device', 'cuda'),
-            'eval_device': self.smash_config.get('eval_device', 'cuda'),
-            'save_model': self.smash_config.get('save_model', True),
-        }
+      """
+      Use LLM-Pruner to prune LLaMA, BLOOM, Vicuna, etc. models.
+      """
+      # Setup the argument parser and pass the args programmatically
+      parser = argparse.ArgumentParser(description='Pruning LLaMA (huggingface version)')
 
-        # Convert args to command line format for subprocess
-        cmd_args = [f"--{key}={value}" for key, value in args.items()]
+      args = {
+          'base_model': self.model_id,
+          'pruning_ratio': self.smash_config.get('pruning_ratio', 0.5),
+          'pruner_type': self.smash_config.get('pruner_type', 'l2'),
+          'block_wise': self.smash_config.get('block_wise', False),
+          'channel_wise': self.smash_config.get('channel_wise', False),
+          'layer_wise': self.smash_config.get('layer_wise', False),
+          'device': self.smash_config.get('device', 'cuda'),
+          'eval_device': self.smash_config.get('eval_device', 'cuda'),
+          'save_model': self.smash_config.get('save_model', True),
+          'test_before_train': self.smash_config.get('test_before_train', False),
+          'test_after_train': self.smash_config.get('test_after_train', True),
+          'block_attention_layer_start': self.smash_config.get('block_attention_layer_start', 3),
+          'block_attention_layer_end': self.smash_config.get('block_attention_layer_end', 31),
+          'block_mlp_layer_start': self.smash_config.get('block_mlp_layer_start', 3),
+          'block_mlp_layer_end': self.smash_config.get('block_mlp_layer_end', 31),
+          'layer': self.smash_config.get('layer', 12),
+          'iterative_steps': self.smash_config.get('iterative_steps', 1),
+          'grouping_strategy': self.smash_config.get('grouping_strategy', 'sum'),
+          'global_pruning': self.smash_config.get('global_pruning', False),
+          'taylor': self.smash_config.get('taylor', 'param_first'),
+          'seed': self.smash_config.get('seed', 42),
+      }
 
-        # Call hf_prune.py or another script for LLM pruning
-        subprocess.run(['python', 'hf_prune.py'] + cmd_args, check=True)
+      # Convert dictionary args to namespace
+      args_namespace = argparse.Namespace(**args)
 
-        logger.info(f"LLM model pruned successfully: {self.model_id}")
+      # Call the main pruning function from hf_prune.py
+      # Parsing only known args to avoid Jupyter/Colab unrecognized arguments
+      prune_llm_main(args_namespace, model=self.model_id, pruning_ratio=pruning_ratio, seed=seed)
 
 
 
