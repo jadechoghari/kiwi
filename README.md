@@ -135,4 +135,7 @@ With Kiwi, the days of high AWS bills and slow LLMs are over. Whether you're pru
 !git clone https://github.com/jadechoghari/kiwi.git
 ```
 
+## Run on Collab:
+Make sure you buid transformers from source to import TorchAoConfig!!
+
 And you’re off to the races! 🚀 Go Kiwiiii and watch your models fly.
