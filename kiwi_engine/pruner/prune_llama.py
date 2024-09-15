@@ -257,7 +257,7 @@ def get_llm(model_name):
     model.seqlen = model.config.max_position_embeddings 
     return model
 
-def main():
+def main(args, model_name, pruning_ratio, seed):
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, help='LLaMA model')
     parser.add_argument('--seed', type=int, default=0, help='Seed for sampling the calibration data.')
@@ -266,19 +266,22 @@ def main():
     parser.add_argument('--save', type=str, default=None, help='Path to save results.')
     parser.add_argument('--save_model', type=str, default=None, help='Path to save the pruned model.')
     parser.add_argument("--eval_zero_shot", action="store_true")
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
+    old_model = model_name
+    model_name = model_name.split("/")[-1]
+    
     # Setting seeds for reproducibility
-    np.random.seed(args.seed)
-    torch.random.manual_seed(args.seed)
+    np.random.seed(seed)
+    torch.random.manual_seed(seed)
 
-    model_name = args.model.split("/")[-1]
-    print(f"loading llm model {args.model}")
-    model = get_llm(args.model)       
+    print(model_name, 'model')
+    print(f"loading llm model {old_model}")
+    model = get_llm(old_model)       
     model.eval()
-    tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained(old_model, use_fast=False)
     device = torch.device("cuda:0")
-    if "30b" in args.model or "65b" in args.model: # for 30b and 65b we use device_map to load onto multiple A6000 GPUs, thus the processing here.
+    if "30b" in old_model or "65b" in old_model: # for 30b and 65b we use device_map to load onto multiple A6000 GPUs, thus the processing here.
         device = model.hf_device_map["lm_head"]
     print("use device ", device)
 
@@ -297,8 +300,8 @@ def main():
             num_heads[m.k_proj] = model.config.num_key_value_heads
             num_heads[m.v_proj] = model.config.num_key_value_heads
             
-    head_pruning_ratio = args.pruning_ratio
-    hidden_size_pruning_ratio = args.pruning_ratio
+    head_pruning_ratio = pruning_ratio
+    hidden_size_pruning_ratio = pruning_ratio
     pruner = tp.pruner.MagnitudePruner(
         model, 
         example_inputs=inputs,
