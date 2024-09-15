@@ -11,6 +11,8 @@ from typing import Tuple
 import torch
 import numpy as np
 from transformers import LlamaTokenizer, GenerationConfig, LlamaConfig
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
 from LLMPruner.models.hf_llama.modeling_llama import LlamaForCausalLM, LlamaRMSNorm, LlamaAttention, LlamaMLP
 
 import LLMPruner.torch_pruning as tp 
