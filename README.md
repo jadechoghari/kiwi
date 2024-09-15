@@ -139,3 +139,10 @@ With Kiwi, the days of high AWS bills and slow LLMs are over. Whether you're pru
 Make sure you buid transformers from source to import TorchAoConfig!!
 
 And you’re off to the races! 🚀 Go Kiwiiii and watch your models fly.
+
+# Acknowledgement
+
+LLMPruner Code Generously Borrowed from Ma et al "LLM-Pruner: On the Structural Pruning of Large Language Models" (2023) https://arxiv.org/abs/2305.11627 [https://github.com/horseee/LLM-Pruner]. 🚀🚀🚀
+
+NOTE: We will acknowledge the code of **all** the authors we have **used**! SOTA compression/pruning techniques will not possible without them ❤️
+
