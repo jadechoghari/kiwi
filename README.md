@@ -144,5 +144,5 @@ And you’re off to the races! 🚀 Go Kiwiiii and watch your models fly.
 
 LLMPruner Code Generously Borrowed from Ma et al "LLM-Pruner: On the Structural Pruning of Large Language Models" (2023) https://arxiv.org/abs/2305.11627 [https://github.com/horseee/LLM-Pruner]. 🚀🚀🚀
 
-NOTE: We will acknowledge the code of **all** the authors we have **used**! SOTA compression/pruning techniques will not possible without them ❤️
+NOTE: We will acknowledge the code of **all** the authors we have **used**! SOTA compression/pruning techniques will not be possible without them ❤️
 
