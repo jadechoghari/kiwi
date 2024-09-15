@@ -16,7 +16,7 @@ parser.add_argument('--pruning_ratio', default=0.5, type=float, help='channel pr
 parser.add_argument('--global_pruning', default=False, action='store_true', help='global pruning')
 parser.add_argument('--pretrained', default=False, action='store_true', help='global pruning')
 parser.add_argument('--list_models', default=False, action='store_true', help='list all models in timm')
-args = parser.parse_args()
+args, unknown = parser.parse_known_args()
 
 def main():
     timm_models = timm.list_models()
