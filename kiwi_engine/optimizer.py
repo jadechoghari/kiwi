@@ -532,3 +532,6 @@ class Optimizer:
             logger.info(f"Model and tokenizer saved to {save_directory}.")
         else:
             raise ValueError("Model not optimized yet. Call optimize() first.")
+
+
+    #TODO: add tensor flow save pretrained method
